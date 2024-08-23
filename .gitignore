@@ -1,0 +1,14 @@
+*.jl.*.cov
+*.jl.cov
+*.jl.mem
+Manifest.toml
+docs/build/
+*.rej
+node_modules
+data
+notebooks
+_research
+plots
+Manifest.toml
+test/Manifest.toml
+docs/Manifest.toml

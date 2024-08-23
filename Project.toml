@@ -1,0 +1,7 @@
+name = "SCFQFT"
+uuid = "89a0a5ea-a54d-5819-a7ed-290244e78af6"
+authors = ["hz-xiaxz <1806656034@qq.com> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.10"
