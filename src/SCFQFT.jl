@@ -30,7 +30,7 @@ Calculate the mean Green's function G
 Parameters:
     ω::Float64 - frequency
     ϵ::Float64 - energy
-    v::Float64 - velocity
+    v::Float64 - coupling strength
     μ::Float64 - chemical potential
     Δ::Float64 - gap parameter
 """
@@ -44,7 +44,7 @@ Calculate the mean anomalous Green's function F
 Parameters:
     ω::Float64 - frequency
     ϵ::Float64 - energy
-    v::Float64 - velocity
+    v::Float64 - coupling strength
     μ::Float64 - chemical potential
     Δ::Float64 - gap parameter
 """
