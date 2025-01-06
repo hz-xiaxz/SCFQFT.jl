@@ -17,21 +17,21 @@ const d = 3
 const c = 2 * π^(d / 2) / (SpecialFunctions.gamma(d / 2) * (2π)^d) * Λ^(d - 2) / (d - 2)
 
 # Helper functions for energy calculations
-function ϵ_bar(v::Float64)
-    1 + 4 / (3π * v)
+function ϵ_bar(; ϵ::Float64, v::Float64)
+    ϵ + 4 / (3π * v)
 end
 
-function E(; v::Float64, μ::Float64, Δ::Float64)
-    √((ϵ_bar(v) - μ)^2 + Δ^2)
+function E(; ϵ::Float64, v::Float64, μ::Float64, Δ::Float64)
+    √((ϵ_bar(ϵ = ϵ, v = v) - μ)^2 + Δ^2)
 end
 
 # Helper functions for quantum factors
-function usq(; v::Float64, μ::Float64, Δ::Float64)
-    1 / 2 * (1 + (ϵ_bar(v) - μ) / (E(v = v, μ = μ, Δ = Δ) - μ))
+function usq(; ϵ::Float64, v::Float64, μ::Float64, Δ::Float64)
+    1 / 2 * (1 + (ϵ_bar(ϵ = ϵ, v = v) - μ) / (E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ))
 end
 
-function vsq(; v::Float64, μ::Float64, Δ::Float64)
-    1 / 2 * (1 - (ϵ_bar(v) - μ) / (E(v = v, μ = μ, Δ = Δ) - μ))
+function vsq(; ϵ::Float64, v::Float64, μ::Float64, Δ::Float64)
+    1 / 2 * (1 - (ϵ_bar(ϵ = ϵ, v = v) - μ) / (E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ))
 end
 
 # Main exported functions
@@ -44,9 +44,9 @@ Parameters:
     μ::Float64 - chemical potential
     Δ::Float64 - gap parameter
 """
-function G_mean(; ω::Float64, v::Float64, μ::Float64, Δ::Float64)
-    usq(v = v, μ = μ, Δ = Δ) / (-im * ω + E(v = v, μ = μ, Δ = Δ) - μ) +
-    vsq(v = v, μ = μ, Δ = Δ) / (im * ω + E(v = v, μ = μ, Δ = Δ) - μ)
+function G_mean(; ω::Float64, ϵ::Float64, v::Float64, μ::Float64, Δ::Float64)
+    usq(ϵ = ϵ, v = v, μ = μ, Δ = Δ) / (-im * ω + E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ) +
+    vsq(ϵ = ϵ, v = v, μ = μ, Δ = Δ) / (im * ω + E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ)
 end
 
 """
@@ -58,9 +58,11 @@ Parameters:
     μ::Float64 - chemical potential
     Δ::Float64 - gap parameter
 """
-function F_mean(; ω::Float64, v::Float64, μ::Float64, Δ::Float64)
-    -Δ / (2 * (E(v = v, μ = μ, Δ = Δ) - μ)) *
-    (1 / (-im * ω + E(v = v, μ = μ, Δ = Δ) - μ) + 1 / (im * ω + E(v = v, μ = μ, Δ = Δ) - μ))
+function F_mean(; ω::Float64, ϵ::Float64, v::Float64, μ::Float64, Δ::Float64)
+    -Δ / (2 * (E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ)) * (
+        1 / (-im * ω + E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ) +
+        1 / (im * ω + E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ)
+    )
 end
 # above ref Hausmann 2003 (3.63)-(3.67)
 
@@ -71,10 +73,15 @@ function Green(; v::Float64, μ::Float64, Δ::Float64)
         ky = G_n.mesh[4][ind[4]]
         kz = G_n.mesh[5][ind[5]]
         ω_n = G_n.mesh[6][ind[6]]
+        ksq = kx^2 + ky^2 + kz^2
         if ind[1] == 1 && ind[2] == 1
-            G_n[ind] = G_mean(ω = ω_n, v = v, μ = μ, Δ = Δ)
+            G_n[ind] = G_mean(ω = ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ)
         elseif ind[1] == 1 && ind[2] == 2
-
+            G_n[ind] = F_mean(ω = ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ)
+        elseif ind[1] == 2 && ind[2] == 1
+            G_n[ind] = -conj(F_mean(ω = -ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ))
+        elseif ind[1] == 2 && ind[2] == 2
+            G_n[ind] = -G_mean(ω = -ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ)
         end
     end
 end
