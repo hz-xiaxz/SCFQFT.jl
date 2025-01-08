@@ -110,6 +110,10 @@ function Green(;
     return G_n
 end
 # compute M(K, Ω_n)
+function M(; K::Float64, Ω_n::Float64)
+
+end
+
 function SCF()
     # start from phase space component of G and F
     # the green function has no spin index, but Nambu indices
