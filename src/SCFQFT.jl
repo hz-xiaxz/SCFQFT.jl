@@ -1,7 +1,11 @@
 module SCFQFT
-using LinearAlgebra
-using GreenFunc, CompositeGrids
-using SpecialFunctions
+
+# Explicit imports from each package
+using CompositeGrids: SimpleGrid
+using GreenFunc.MeshGrids: FERMION
+using GreenFunc.MeshArrays: MeshArray
+using GreenFunc: MeshGrids
+using SpecialFunctions: gamma
 
 # Default mesh parameters
 const DEFAULT_β = 0.1
@@ -25,12 +29,11 @@ end
 const ω_mesh, k_mesh, θ_mesh, ϕ_mesh = create_meshes()
 
 # Constants
-const gamma = [1 0; 0 -1]
+const gamma_mat = [1 0; 0 -1]
 const deltam = [1 0; 0 1]
 # the cutoff constant, V should go to 0- for the renormalization procedure
 const d = 3
-const c =
-    2 * π^(d / 2) / (SpecialFunctions.gamma(d / 2) * (2π)^d) * DEFAULT_Λ^(d - 2) / (d - 2)
+const c = 2 * π^(d / 2) / (gamma(d / 2) * (2π)^d) * DEFAULT_Λ^(d - 2) / (d - 2)
 
 # Helper functions for energy calculations
 function ϵ_bar(; ϵ::Float64, v::Float64)
@@ -99,16 +102,18 @@ function Green(;
         elseif ind[1] == 1 && ind[2] == 2
             G_n[ind] = F_mean(ω = ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ)
         elseif ind[1] == 2 && ind[2] == 1
-            inverse_ω = mod(-ω_n, 2π)
-            G_n[ind] = -conj(F_mean(ω = inverse_ω, ϵ = ksq, v = v, μ = μ, Δ = Δ))
+            G_n[ind] = -conj(F_mean(ω = -ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ))
         elseif ind[1] == 2 && ind[2] == 2
-            inverse_ω = mod(-ω_n, 2π)
-            G_n[ind] = -G_mean(ω = inverse_ω, ϵ = ksq, v = v, μ = μ, Δ = Δ)
+            G_n[ind] = -G_mean(ω = -ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ)
         end
     end
     return G_n
 end
 # compute M(K, Ω_n)
+function M(; K::Float64, Ω_n::Float64)
+
+end
+
 function SCF()
     # start from phase space component of G and F
     # the green function has no spin index, but Nambu indices
