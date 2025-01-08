@@ -99,11 +99,9 @@ function Green(;
         elseif ind[1] == 1 && ind[2] == 2
             G_n[ind] = F_mean(ω = ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ)
         elseif ind[1] == 2 && ind[2] == 1
-            inverse_ω = mod(-ω_n, 2π)
-            G_n[ind] = -conj(F_mean(ω = inverse_ω, ϵ = ksq, v = v, μ = μ, Δ = Δ))
+            G_n[ind] = -conj(F_mean(ω = -ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ))
         elseif ind[1] == 2 && ind[2] == 2
-            inverse_ω = mod(-ω_n, 2π)
-            G_n[ind] = -G_mean(ω = inverse_ω, ϵ = ksq, v = v, μ = μ, Δ = Δ)
+            G_n[ind] = -G_mean(ω = -ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ)
         end
     end
     return G_n
