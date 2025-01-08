@@ -1,9 +1,14 @@
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
-Manifest.toml
-docs/build/
 *.rej
+.DS_Store
+.benchmarkci
+Manifest.toml
+benchmark/*.json
+coverage
+docs/build/
+env
 node_modules
 data
 notebooks

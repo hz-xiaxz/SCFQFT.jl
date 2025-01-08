@@ -4,6 +4,10 @@ using Documenter
 DocMeta.setdocmeta!(SCFQFT, :DocTestSetup, :(using SCFQFT); recursive = true)
 
 const page_rename = Dict("developer.md" => "Developer docs") # Without the numbers
+const numbered_pages = [
+    file for file in readdir(joinpath(@__DIR__, "src")) if
+    file != "index.md" && splitext(file)[2] == ".md"
+]
 
 makedocs(;
     modules = [SCFQFT],
@@ -11,13 +15,7 @@ makedocs(;
     repo = "https://github.com/hz-xiaxz/SCFQFT.jl/blob/{commit}{path}#{line}",
     sitename = "SCFQFT.jl",
     format = Documenter.HTML(; canonical = "https://hz-xiaxz.github.io/SCFQFT.jl"),
-    pages = [
-        "index.md"
-        [
-            file for file in readdir(joinpath(@__DIR__, "src")) if
-            file != "index.md" && splitext(file)[2] == ".md"
-        ]
-    ],
+    pages = ["index.md"; numbered_pages],
 )
 
 deploydocs(; repo = "github.com/hz-xiaxz/SCFQFT.jl")

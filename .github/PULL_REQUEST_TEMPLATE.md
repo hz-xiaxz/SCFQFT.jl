@@ -1,7 +1,6 @@
 <!--
 Thanks for making a pull request to SCFQFT.jl.
 We have added this PR template to help you help us.
-
 See the comments below, fill the required fields, and check the items.
 -->
 
@@ -21,7 +20,6 @@ There is no related issue.
 
 <!-- mark true if NA -->
 <!-- leave PR as draft until all is checked -->
-
 - [ ] Tests are passing
 - [ ] Lint workflow is passing
 - [ ] Docs were updated and workflow is passing
