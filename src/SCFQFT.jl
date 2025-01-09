@@ -2,7 +2,7 @@ module SCFQFT
 
 # Explicit imports from each package
 using CompositeGrids: SimpleGrid
-using GreenFunc.MeshGrids: FERMION
+using GreenFunc.MeshGrids: FERMION, BOSON
 using GreenFunc.MeshArrays: MeshArray
 using GreenFunc: MeshGrids
 using SpecialFunctions: gamma
