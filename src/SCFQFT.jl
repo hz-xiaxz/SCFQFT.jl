@@ -2,7 +2,7 @@ module SCFQFT
 
 # Explicit imports from each package
 using CompositeGrids: SimpleGrid
-using GreenFunc.MeshGrids: FERMION
+using GreenFunc.MeshGrids: FERMION, BOSON
 using GreenFunc.MeshArrays: MeshArray
 using GreenFunc: MeshGrids
 using SpecialFunctions: gamma
@@ -19,14 +19,15 @@ function create_meshes(;
     n_points::Int = DEFAULT_MESH_POINTS,
 )
     ω_mesh = MeshGrids.ImFreq(β, FERMION)
+    Ω_mesh = MeshGrids.ImFreq(β, BOSON)
     k_mesh = SimpleGrid.Uniform([-sqrt(Λ), sqrt(Λ)], n_points)
     θ_mesh = SimpleGrid.Uniform([0, π], n_points)
     ϕ_mesh = SimpleGrid.Uniform([0, 2π], n_points)
-    return ω_mesh, k_mesh, θ_mesh, ϕ_mesh
+    return ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh
 end
 
 # Global meshes for default usage
-const ω_mesh, k_mesh, θ_mesh, ϕ_mesh = create_meshes()
+const ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh = create_meshes()
 
 # Constants
 const gamma_mat = [1 0; 0 -1]
@@ -85,7 +86,7 @@ function F_mean(; ω::Float64, ϵ::Float64, v::Float64, μ::Float64, Δ::Float64
 end
 # above ref Hausmann 2003 (3.63)-(3.67)
 
-function Green(;
+function G_n(;
     v::Float64,
     μ::Float64,
     Δ::Float64,
@@ -109,9 +110,105 @@ function Green(;
     end
     return G_n
 end
-# compute M(K, Ω_n)
-function M(; K::Float64, Ω_n::Float64)
 
+"""Calculate k·K term in spherical coordinates"""
+function calc_dot_product(
+    K::Float64,
+    k::Float64,
+    Θ::Float64,
+    θ::Float64,
+    Φ::Float64,
+    ϕ::Float64,
+)
+    K * k * (sin(Θ) * sin(θ) * cos(Φ - ϕ) + cos(Θ) * cos(θ))
+end
+
+"""Calculate k±K/2 squared terms"""
+function calc_k_squared_terms(K::Float64, k::Float64, dot_term::Float64)
+    square_term = K^2 / 4 + k^2
+    ksq1 = square_term - dot_term
+    ksq2 = square_term + dot_term
+    return ksq1, ksq2
+end
+
+"""Calculate frequency sum for given Nambu indices"""
+function calc_frequency_sum(
+    α1::Int,
+    α2::Int,
+    Ω_n::Float64,
+    ksq1::Float64,
+    ksq2::Float64,
+    ω_m::AbstractArray,
+    v::Float64,
+    μ::Float64,
+    Δ::Float64,
+)
+
+    omega_sum = 0.0im
+    for ω_n in ω_m
+        if α1 == 1 && α2 == 1
+            omega_sum +=
+                G_mean(ω = Ω_n - ω_n, ϵ = ksq1, v = v, μ = μ, Δ = Δ) *
+                G_mean(ω = ω_n, ϵ = ksq2, v = v, μ = μ, Δ = Δ)
+        elseif α1 == 1 && α2 == 2
+            omega_sum +=
+                F_mean(ω = Ω_n - ω_n, ϵ = ksq1, v = v, μ = μ, Δ = Δ) *
+                F_mean(ω = ω_n, ϵ = ksq2, v = v, μ = μ, Δ = Δ)
+        elseif α1 == 2 && α2 == 1
+            omega_sum +=
+                conj(F_mean(ω = -(Ω_n - ω_n), ϵ = ksq1, v = v, μ = μ, Δ = Δ)) *
+                conj(F_mean(ω = -ω_n, ϵ = ksq2, v = v, μ = μ, Δ = Δ))
+        else # α1 == 2 && α2 == 2
+            omega_sum +=
+                G_mean(ω = -(Ω_n - ω_n), ϵ = ksq1, v = v, μ = μ, Δ = Δ) *
+                G_mean(ω = -ω_n, ϵ = ksq2, v = v, μ = μ, Δ = Δ)
+        end
+    end
+    return omega_sum
+end
+
+"""Main M_n calculation function"""
+function M_n(;
+    v::Float64,
+    μ::Float64,
+    Δ::Float64,
+    meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh),
+)
+    ω_m, Ω_m, k_m, θ_m, ϕ_m = meshes
+    M_n = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, Ω_m; dtype = ComplexF64)
+
+    for K_idx in eachindex(k_m),
+        Θ_idx in eachindex(θ_m),
+        Φ_idx in eachindex(ϕ_m),
+        Ω_idx in eachindex(Ω_m)
+
+        K = k_m[K_idx]
+        Θ = θ_m[Θ_idx]
+        Φ = ϕ_m[Φ_idx]
+        Ω_n = Ω_m[Ω_idx]
+
+        for α1 = 1:2, α2 = 1:2
+            k_sum = 0.0im
+            for k_idx in eachindex(k_m), θ_idx in eachindex(θ_m), ϕ_idx in eachindex(ϕ_m)
+
+                k = k_m[k_idx]
+                θ = θ_m[θ_idx]
+                ϕ = ϕ_m[ϕ_idx]
+
+                dot_term = calc_dot_product(K, k, Θ, θ, Φ, ϕ)
+                ksq1, ksq2 = calc_k_squared_terms(K, k, dot_term)
+
+                omega_sum = calc_frequency_sum(α1, α2, Ω_n, ksq1, ksq2, ω_m, v, μ, Δ)
+                k_sum += omega_sum / β
+
+                if α1 == α2
+                    k_sum -= 1 / 2 * k^(-2)
+                end
+            end
+            M_n[α1, α2, K_idx, Θ_idx, Φ_idx, Ω_idx] = k_sum
+        end
+    end
+    return M_n
 end
 
 function SCF()

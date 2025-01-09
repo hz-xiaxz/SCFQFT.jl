@@ -1,4 +1,4 @@
-using SCFQFT: ϵ_bar, E, usq, vsq, G_mean, F_mean, Green, create_meshes
+using SCFQFT: ϵ_bar, E, usq, vsq, G_mean, F_mean, G_n, create_meshes
 using Test
 using GreenFunc
 using CompositeGrids
@@ -31,9 +31,10 @@ end
     Λ = 2.0
     n_points = 5  # Small number for testing
     test_meshes = create_meshes(β = β, Λ = Λ, n_points = n_points)
+    ω_m, Ω_m, k_m, θ_m, ϕ_m = test_meshes
 
     # Get Green's function with test meshes
-    G = Green(v = v, μ = μ, Δ = Δ, meshes = test_meshes)
+    G = G_n(v = v, μ = μ, Δ = Δ, meshes = (ω_m, k_m, θ_m, ϕ_m))
 
     @testset "Basic properties" begin
         # Test return value
