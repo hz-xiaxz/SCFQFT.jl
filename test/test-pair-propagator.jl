@@ -1,5 +1,13 @@
 using Test
-using SCFQFT: calc_dot_product, calc_k_squared_terms, calc_frequency_sum, M_n
+using SCFQFT:
+    calc_dot_product,
+    calc_k_squared_terms,
+    calc_frequency_sum,
+    M_n,
+    create_meshes,
+    Parameters,
+    DEFAULT_β
+using GreenFunc: MeshGrids, FERMION, BOSON
 
 @testset "M_n calculations" begin
     @testset "Dot product calculation" begin
@@ -23,4 +31,19 @@ using SCFQFT: calc_dot_product, calc_k_squared_terms, calc_frequency_sum, M_n
         @test ksq1 + ksq2 ≈ 2 * (1.0 + 1.0) # sum should be independent of dot product
     end
 
+    @testset "M_n calculations" begin
+        # Create Parameters struct for testing
+        params = Parameters(v = 1.0, μ = 0.5, Δ = 0.1)  # Use kwarg syntax for Parameters
+
+        # Test M_n function with the parameters struct
+        ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh =
+            create_meshes(β = 0.1, Λ = 2.0, n_points = 5)
+        Ω_mesh = MeshGrids.ImFreq(0.1, BOSON; Euv = 1.0)
+        ω_mesh = MeshGrids.ImFreq(0.1, FERMION; Euv = 1.0)
+        M_result = M_n(para = params, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
+
+        @test !isnothing(M_result)  # Ensure M_n returns a result
+        @test size(M_result) == (2, 2, 5, 5, 5, 36)  # Check dimensions with n_points=5
+        @test eltype(M_result) == ComplexF64  # Check type
+    end
 end

@@ -12,6 +12,13 @@ const DEFAULT_β = 0.1
 const DEFAULT_Λ = 2.0
 const DEFAULT_MESH_POINTS = 50
 
+# Define a new struct to hold the variables
+@kwdef struct Parameters
+    v::Float64
+    μ::Float64
+    Δ::Float64
+end
+
 # Mesh creation function
 function create_meshes(;
     β::Float64 = DEFAULT_β,
@@ -41,17 +48,17 @@ function ϵ_bar(; ϵ::Float64, v::Float64)
     ϵ + 4 / (3π * v)
 end
 
-function E(; ϵ::Float64, v::Float64, μ::Float64, Δ::Float64)
-    √((ϵ_bar(ϵ = ϵ, v = v) - μ)^2 + Δ^2)
+function E(; ϵ::Float64, para::Parameters)
+    √((ϵ_bar(ϵ = ϵ, v = para.v) - para.μ)^2 + para.Δ^2)
 end
 
 # Helper functions for quantum factors
-function usq(; ϵ::Float64, v::Float64, μ::Float64, Δ::Float64)
-    1 / 2 * (1 + (ϵ_bar(ϵ = ϵ, v = v) - μ) / (E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ))
+function usq(; ϵ::Float64, para::Parameters)
+    1 / 2 * (1 + (ϵ_bar(ϵ = ϵ, v = para.v) - para.μ) / (E(ϵ = ϵ, para = para) - para.μ))
 end
 
-function vsq(; ϵ::Float64, v::Float64, μ::Float64, Δ::Float64)
-    1 / 2 * (1 - (ϵ_bar(ϵ = ϵ, v = v) - μ) / (E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ))
+function vsq(; ϵ::Float64, para::Parameters)
+    1 / 2 * (1 - (ϵ_bar(ϵ = ϵ, v = para.v) - para.μ) / (E(ϵ = ϵ, para = para) - para.μ))
 end
 
 # Main exported functions
@@ -64,9 +71,9 @@ Parameters:
     μ::Float64 - chemical potential
     Δ::Float64 - gap parameter
 """
-function G_mean(; ω::Float64, ϵ::Float64, v::Float64, μ::Float64, Δ::Float64)
-    usq(ϵ = ϵ, v = v, μ = μ, Δ = Δ) / (-im * ω + E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ) +
-    vsq(ϵ = ϵ, v = v, μ = μ, Δ = Δ) / (im * ω + E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ)
+function G_mean(; ω::Float64, ϵ::Float64, para::Parameters)
+    usq(ϵ = ϵ, para = para) / (-im * ω + E(ϵ = ϵ, para = para) - para.μ) +
+    vsq(ϵ = ϵ, para = para) / (im * ω + E(ϵ = ϵ, para = para) - para.μ)
 end
 
 """
@@ -78,20 +85,15 @@ Parameters:
     μ::Float64 - chemical potential
     Δ::Float64 - gap parameter
 """
-function F_mean(; ω::Float64, ϵ::Float64, v::Float64, μ::Float64, Δ::Float64)
-    -Δ / (2 * (E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ)) * (
-        1 / (-im * ω + E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ) +
-        1 / (im * ω + E(ϵ = ϵ, v = v, μ = μ, Δ = Δ) - μ)
+function F_mean(; ω::Float64, ϵ::Float64, para::Parameters)
+    -para.Δ / (2 * (E(ϵ = ϵ, para = para) - para.μ)) * (
+        1 / (-im * ω + E(ϵ = ϵ, para = para) - para.μ) +
+        1 / (im * ω + E(ϵ = ϵ, para = para) - para.μ)
     )
 end
 # above ref Hausmann 2003 (3.63)-(3.67)
 
-function G_n(;
-    v::Float64,
-    μ::Float64,
-    Δ::Float64,
-    meshes = (ω_mesh, k_mesh, θ_mesh, ϕ_mesh),
-)
+function G_n(; para::Parameters, meshes = (ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
     ω_m, k_m, θ_m, ϕ_m = meshes
     G_n = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, ω_m; dtype = ComplexF64)
     for ind in eachindex(G_n)
@@ -99,13 +101,13 @@ function G_n(;
         ω_n = G_n.mesh[6][ind[6]]
         ksq = k^2
         if ind[1] == 1 && ind[2] == 1
-            G_n[ind] = G_mean(ω = ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ)
+            G_n[ind] = G_mean(ω = ω_n, ϵ = ksq, para = para)
         elseif ind[1] == 1 && ind[2] == 2
-            G_n[ind] = F_mean(ω = ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ)
+            G_n[ind] = F_mean(ω = ω_n, ϵ = ksq, para = para)
         elseif ind[1] == 2 && ind[2] == 1
-            G_n[ind] = -conj(F_mean(ω = -ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ))
+            G_n[ind] = -conj(F_mean(ω = -ω_n, ϵ = ksq, para = para))
         elseif ind[1] == 2 && ind[2] == 2
-            G_n[ind] = -G_mean(ω = -ω_n, ϵ = ksq, v = v, μ = μ, Δ = Δ)
+            G_n[ind] = -G_mean(ω = -ω_n, ϵ = ksq, para = para)
         end
     end
     return G_n
@@ -139,29 +141,27 @@ function calc_frequency_sum(
     ksq1::Float64,
     ksq2::Float64,
     ω_m::AbstractArray,
-    v::Float64,
-    μ::Float64,
-    Δ::Float64,
+    para::Parameters,
 )
 
     omega_sum = 0.0im
     for ω_n in ω_m
         if α1 == 1 && α2 == 1
             omega_sum +=
-                G_mean(ω = Ω_n - ω_n, ϵ = ksq1, v = v, μ = μ, Δ = Δ) *
-                G_mean(ω = ω_n, ϵ = ksq2, v = v, μ = μ, Δ = Δ)
+                G_mean(ω = Ω_n - ω_n, ϵ = ksq1, para = para) *
+                G_mean(ω = ω_n, ϵ = ksq2, para = para)
         elseif α1 == 1 && α2 == 2
             omega_sum +=
-                F_mean(ω = Ω_n - ω_n, ϵ = ksq1, v = v, μ = μ, Δ = Δ) *
-                F_mean(ω = ω_n, ϵ = ksq2, v = v, μ = μ, Δ = Δ)
+                F_mean(ω = Ω_n - ω_n, ϵ = ksq1, para = para) *
+                F_mean(ω = ω_n, ϵ = ksq2, para = para)
         elseif α1 == 2 && α2 == 1
             omega_sum +=
-                conj(F_mean(ω = -(Ω_n - ω_n), ϵ = ksq1, v = v, μ = μ, Δ = Δ)) *
-                conj(F_mean(ω = -ω_n, ϵ = ksq2, v = v, μ = μ, Δ = Δ))
+                conj(F_mean(ω = -(Ω_n - ω_n), ϵ = ksq1, para = para)) *
+                conj(F_mean(ω = -ω_n, ϵ = ksq2, para = para))
         else # α1 == 2 && α2 == 2
             omega_sum +=
-                G_mean(ω = -(Ω_n - ω_n), ϵ = ksq1, v = v, μ = μ, Δ = Δ) *
-                G_mean(ω = -ω_n, ϵ = ksq2, v = v, μ = μ, Δ = Δ)
+                G_mean(ω = -(Ω_n - ω_n), ϵ = ksq1, para = para) *
+                G_mean(ω = -ω_n, ϵ = ksq2, para = para)
         end
     end
     return omega_sum
@@ -170,12 +170,7 @@ end
 """
 The non-divergent part of the pair propagator ``\\chi``
 """
-function M_n(;
-    v::Float64,
-    μ::Float64,
-    Δ::Float64,
-    meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh),
-)
+function M_n(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
     ω_m, Ω_m, k_m, θ_m, ϕ_m = meshes
     M_n = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, Ω_m; dtype = ComplexF64)
     Δk = k_m[2] - k_m[1]
@@ -204,8 +199,8 @@ function M_n(;
                 dot_term = calc_dot_product(K, k, Θ, θ, Φ, ϕ)
                 ksq1, ksq2 = calc_k_squared_terms(K, k, dot_term)
 
-                omega_sum = calc_frequency_sum(α1, α2, Ω_n, ksq1, ksq2, ω_m, v, μ, Δ)
-                k_sum += omega_sum / β * k^2 * sin(θ) / (2π)^3 * ΔV
+                omega_sum = calc_frequency_sum(α1, α2, Ω_n, ksq1, ksq2, ω_m, para)
+                k_sum += omega_sum / DEFAULT_β * k^2 * sin(θ) / (2π)^3 * ΔV
 
                 if α1 == α2
                     k_sum -= 1 / 2 * ΔV / (2π)^3 * sin(Θ)
