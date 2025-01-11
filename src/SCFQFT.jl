@@ -167,7 +167,9 @@ function calc_frequency_sum(
     return omega_sum
 end
 
-"""Main M_n calculation function"""
+"""
+The non-divergent part of the pair propagator ``\\chi``
+"""
 function M_n(;
     v::Float64,
     μ::Float64,
@@ -176,6 +178,10 @@ function M_n(;
 )
     ω_m, Ω_m, k_m, θ_m, ϕ_m = meshes
     M_n = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, Ω_m; dtype = ComplexF64)
+    Δk = k_m[2] - k_m[1]
+    Δθ = θ_m[2] - θ_m[1]
+    Δϕ = ϕ_m[2] - ϕ_m[1]
+    ΔV = Δk * Δθ * Δϕ
 
     for K_idx in eachindex(k_m),
         Θ_idx in eachindex(θ_m),
@@ -199,10 +205,11 @@ function M_n(;
                 ksq1, ksq2 = calc_k_squared_terms(K, k, dot_term)
 
                 omega_sum = calc_frequency_sum(α1, α2, Ω_n, ksq1, ksq2, ω_m, v, μ, Δ)
-                k_sum += omega_sum / β
+                k_sum += omega_sum / β * k^2 * sin(θ) / (2π)^3 * ΔV
 
                 if α1 == α2
-                    k_sum -= 1 / 2 * k^(-2)
+                    k_sum -= 1 / 2 * ΔV / (2π)^3 * sin(Θ)
+                    # 1/2 is due to the unit of E_F
                 end
             end
             M_n[α1, α2, K_idx, Θ_idx, Φ_idx, Ω_idx] = k_sum
