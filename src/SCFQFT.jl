@@ -37,8 +37,8 @@ end
 const ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh = create_meshes()
 
 # Constants
-const gamma_mat = [1 0; 0 -1]
-const deltam = [1 0; 0 1]
+const γ = [1 0; 0 -1]
+
 # the cutoff constant, V should go to 0- for the renormalization procedure
 const d = 3
 const c = 2 * π^(d / 2) / (gamma(d / 2) * (2π)^d) * DEFAULT_Λ^(d - 2) / (d - 2)
@@ -72,7 +72,7 @@ Parameters:
     Δ::Float64 - gap parameter
 """
 function G_mean(; ω::Float64, ϵ::Float64, para::Parameters)
-    usq(ϵ = ϵ, para = para) / (-im * ω + E(ϵ = ϵ, para = para) - para.μ) +
+    usq(ϵ = ϵ, para = para) / (-im * ω + E(ϵ = ϵ, para = para) - para.μ) -
     vsq(ϵ = ϵ, para = para) / (im * ω + E(ϵ = ϵ, para = para) - para.μ)
 end
 
@@ -145,7 +145,7 @@ function calc_frequency_sum(
 )
 
     omega_sum = 0.0im
-    for ω_n in ω_m
+    @inbounds for ω_n in ω_m
         if α1 == 1 && α2 == 1
             omega_sum +=
                 G_mean(ω = Ω_n - ω_n, ϵ = ksq1, para = para) *
@@ -167,6 +167,40 @@ function calc_frequency_sum(
     return omega_sum
 end
 
+function M_n_atomic(;
+    para::Parameters,
+    meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh),
+    ΔV::Float64,
+    K::Float64,
+    Θ::Float64,
+    Φ::Float64,
+    Ω_n::Float64,
+    α1::Int,
+    α2::Int,
+)
+    ω_m, Ω_m, k_m, θ_m, ϕ_m = meshes
+
+    k_sum = 0.0im
+    @inbounds for k_idx in eachindex(k_m), θ_idx in eachindex(θ_m), ϕ_idx in eachindex(ϕ_m)
+
+        k = k_m[k_idx]
+        θ = θ_m[θ_idx]
+        ϕ = ϕ_m[ϕ_idx]
+
+        dot_term = calc_dot_product(K, k, Θ, θ, Φ, ϕ)
+        ksq1, ksq2 = calc_k_squared_terms(K, k, dot_term)
+
+        omega_sum = calc_frequency_sum(α1, α2, Ω_n, ksq1, ksq2, ω_m, para)
+        k_sum += omega_sum / DEFAULT_β * k^2 * sin(θ) / (2π)^3 * ΔV
+
+        if α1 == α2
+            k_sum -= 1 / 2 * ΔV / (2π)^3 * sin(Θ)
+            # 1/2 is due to the unit of E_F
+        end
+    end
+    return k_sum
+end
+
 """
 The non-divergent part of the pair propagator ``\\chi``
 """
@@ -178,39 +212,40 @@ function M_n(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ
     Δϕ = ϕ_m[2] - ϕ_m[1]
     ΔV = Δk * Δθ * Δϕ
 
-    for K_idx in eachindex(k_m),
-        Θ_idx in eachindex(θ_m),
-        Φ_idx in eachindex(ϕ_m),
-        Ω_idx in eachindex(Ω_m)
+    @inbounds for ind in eachindex(M_n)
+        K = k_m[ind[3]]
+        Θ = θ_m[ind[4]]
+        Φ = ϕ_m[ind[5]]
+        Ω_n = Ω_m[ind[6]]
 
-        K = k_m[K_idx]
-        Θ = θ_m[Θ_idx]
-        Φ = ϕ_m[Φ_idx]
-        Ω_n = Ω_m[Ω_idx]
-
-        for α1 = 1:2, α2 = 1:2
-            k_sum = 0.0im
-            for k_idx in eachindex(k_m), θ_idx in eachindex(θ_m), ϕ_idx in eachindex(ϕ_m)
-
-                k = k_m[k_idx]
-                θ = θ_m[θ_idx]
-                ϕ = ϕ_m[ϕ_idx]
-
-                dot_term = calc_dot_product(K, k, Θ, θ, Φ, ϕ)
-                ksq1, ksq2 = calc_k_squared_terms(K, k, dot_term)
-
-                omega_sum = calc_frequency_sum(α1, α2, Ω_n, ksq1, ksq2, ω_m, para)
-                k_sum += omega_sum / DEFAULT_β * k^2 * sin(θ) / (2π)^3 * ΔV
-
-                if α1 == α2
-                    k_sum -= 1 / 2 * ΔV / (2π)^3 * sin(Θ)
-                    # 1/2 is due to the unit of E_F
-                end
-            end
-            M_n[α1, α2, K_idx, Θ_idx, Φ_idx, Ω_idx] = k_sum
-        end
+        M_n[ind] = M_n_atomic(
+            para = para,
+            meshes = meshes,
+            ΔV = ΔV,
+            K = K,
+            Θ = Θ,
+            Φ = Φ,
+            Ω_n = Ω_n,
+            α1 = ind[1],
+            α2 = ind[2],
+        )
     end
     return M_n
+end
+
+function Γ_n(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
+    ω_m, Ω_m, k_m, θ_m, ϕ_m = meshes
+    m_n = M_n(para = para, meshes = meshes)
+    T = para.v / (8π)
+    Γ_n = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, Ω_m; dtype = ComplexF64)
+    @inbounds for ind in eachindex(Γ_n)
+        if ind[1] == ind[2]
+            Γ_n[ind] = inv(1 / T + m_n[ind])
+        else
+            Γ_n[ind] = 1 / m_n[ind]
+        end
+    end
+    return Γ_n
 end
 
 function SCF()
