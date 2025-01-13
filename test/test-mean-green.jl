@@ -8,7 +8,8 @@ using CompositeGrids
     @test SCFQFT.ϵ_bar(ϵ = 1.0, v = 2.0) ≈ 1.0 + 4 / (3π * 2.0)
 
     # Test E with known values
-    test_E = SCFQFT.E(ϵ = 1.0, v = 2.0, μ = 0.5, Δ = 0.1)
+    params = SCFQFT.Parameters(2.0, 0.5, 0.1)  # Create Parameters struct
+    test_E = SCFQFT.E(ϵ = 1.0, para = params)
     @test test_E > 0  # Energy should be positive
     @test test_E isa Float64
 end
@@ -16,15 +17,13 @@ end
 @testset "Quantum factors" begin
     # Test usq + vsq = 1 (normalization)
     ϵ, v, μ, Δ = 1.0, 2.0, 0.5, 0.1
-    @test SCFQFT.usq(ϵ = ϵ, v = v, μ = μ, Δ = Δ) + SCFQFT.vsq(ϵ = ϵ, v = v, μ = μ, Δ = Δ) ≈
-          1.0
+    params = SCFQFT.Parameters(v, μ, Δ)  # Create Parameters struct
+    @test SCFQFT.usq(ϵ = ϵ, para = params) + SCFQFT.vsq(ϵ = ϵ, para = params) ≈ 1.0
 end
 
 @testset "Green function" begin
     # Test parameters
-    v = 1.0
-    μ = 0.5
-    Δ = 0.1
+    params = SCFQFT.Parameters(1.0, 0.5, 0.1)  # Create Parameters struct
 
     # Create small test meshes
     β = 0.1
@@ -34,7 +33,7 @@ end
     ω_m, Ω_m, k_m, θ_m, ϕ_m = test_meshes
 
     # Get Green's function with test meshes
-    G = G_n(v = v, μ = μ, Δ = Δ, meshes = (ω_m, k_m, θ_m, ϕ_m))
+    G = G_n(para = params, meshes = (ω_m, k_m, θ_m, ϕ_m))
 
     @testset "Basic properties" begin
         # Test return value
