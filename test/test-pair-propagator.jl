@@ -6,7 +6,8 @@ using SCFQFT:
     M_n,
     create_meshes,
     Parameters,
-    DEFAULT_β
+    DEFAULT_β,
+    Γ_n
 using GreenFunc: MeshGrids, FERMION, BOSON
 
 @testset "M_n calculations" begin
@@ -45,5 +46,26 @@ using GreenFunc: MeshGrids, FERMION, BOSON
         @test !isnothing(M_result)  # Ensure M_n returns a result
         @test size(M_result) == (2, 2, 5, 5, 5, 36)  # Check dimensions with n_points=5
         @test eltype(M_result) == ComplexF64  # Check type
+    end
+end
+
+@testset "Bethe-Salpeter equation" begin
+    @testset "Γ_n Tests" begin
+        # Setup test meshes
+        ω_mesh = range(-1, 1, length = 3)
+        Ω_mesh = range(-1, 1, length = 3)
+        k_mesh = range(0, 1, length = 2)
+        θ_mesh = range(0, π, length = 2)
+        ϕ_mesh = range(0, 2π, length = 2)
+
+        # Setup parameters
+        para = Parameters(v = 8π, μ = 0.5, Δ = 0.1) # This should make T=1 for simpler testing
+
+        # Calculate Γ_n
+        result = Γ_n(para = para, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
+
+        # Test shape and type
+        @test eltype(result) == ComplexF64
+
     end
 end

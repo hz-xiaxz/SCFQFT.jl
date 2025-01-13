@@ -37,8 +37,8 @@ end
 const ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh = create_meshes()
 
 # Constants
-const gamma_mat = [1 0; 0 -1]
-const deltam = [1 0; 0 1]
+const γ = [1 0; 0 -1]
+
 # the cutoff constant, V should go to 0- for the renormalization procedure
 const d = 3
 const c = 2 * π^(d / 2) / (gamma(d / 2) * (2π)^d) * DEFAULT_Λ^(d - 2) / (d - 2)
@@ -72,7 +72,7 @@ Parameters:
     Δ::Float64 - gap parameter
 """
 function G_mean(; ω::Float64, ϵ::Float64, para::Parameters)
-    usq(ϵ = ϵ, para = para) / (-im * ω + E(ϵ = ϵ, para = para) - para.μ) +
+    usq(ϵ = ϵ, para = para) / (-im * ω + E(ϵ = ϵ, para = para) - para.μ) -
     vsq(ϵ = ϵ, para = para) / (im * ω + E(ϵ = ϵ, para = para) - para.μ)
 end
 
@@ -213,6 +213,21 @@ function M_n(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ
         end
     end
     return M_n
+end
+
+function Γ_n(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
+    ω_m, Ω_m, k_m, θ_m, ϕ_m = meshes
+    m_n = M_n(para = para, meshes = meshes)
+    T = para.v / (8π)
+    Γ_n = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, Ω_m; dtype = ComplexF64)
+    @inbounds for ind in eachindex(Γ_n)
+        if ind[1] == ind[2]
+            Γ_n[ind] = inv(1 / T + m_n[ind])
+        else
+            Γ_n[ind] = 1 / m_n[ind]
+        end
+    end
+    return Γ_n
 end
 
 function SCF()
