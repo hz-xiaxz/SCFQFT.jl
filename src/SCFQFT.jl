@@ -234,7 +234,7 @@ function M_n(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ
     return M_n
 end
 
-function Γ_n_atomic(; T::Float64, m_n::Float64, α1::Int, α2::Int)
+function Γ_n_atomic(; T::Float64, m_n::ComplexF64, α1::Int, α2::Int)
     if α1 == α2
         return inv(1 / T + m_n)
     else
