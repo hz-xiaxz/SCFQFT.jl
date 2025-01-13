@@ -6,6 +6,7 @@ using GreenFunc.MeshGrids: FERMION, BOSON
 using GreenFunc.MeshArrays: MeshArray
 using GreenFunc: MeshGrids
 using SpecialFunctions: gamma
+using LinearAlgebra: norm
 
 # Default mesh parameters
 const DEFAULT_β = 0.1
@@ -233,24 +234,95 @@ function M_n(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ
     return M_n
 end
 
+function Γ_n_atomic(; T::Float64, m_n::Float64, α1::Int, α2::Int)
+    if α1 == α2
+        return inv(1 / T + m_n)
+    else
+        return 1 / m_n
+    end
+end
+
 function Γ_n(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
     ω_m, Ω_m, k_m, θ_m, ϕ_m = meshes
     m_n = M_n(para = para, meshes = meshes)
     T = para.v / (8π)
     Γ_n = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, Ω_m; dtype = ComplexF64)
     @inbounds for ind in eachindex(Γ_n)
-        if ind[1] == ind[2]
-            Γ_n[ind] = inv(1 / T + m_n[ind])
-        else
-            Γ_n[ind] = 1 / m_n[ind]
-        end
+        Γ_n[ind] = Γ_n_atomic(T = T, m_n = m_n[ind], α1 = ind[1], α2 = ind[2])
     end
     return Γ_n
+end
+
+function Self_energy_atomic(;
+    para::Parameters,
+    meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh),
+    α1::Int,
+    α2::Int,
+    k::Float64,
+    θ::Float64,
+    ϕ::Float64,
+    ω::Float64,
+)
+    ω_m, Ω_m, k_m, θ_m, ϕ_m = meshes
+    Δk = k_m[2] - k_m[1]
+    Δθ = θ_m[2] - θ_m[1]
+    Δϕ = ϕ_m[2] - ϕ_m[1]
+    ΔV = Δk * Δθ * Δϕ
+    Σ_sum = 0.0im
+    if α1 == 1 && α2 == 2
+        Σ_sum += para.Δ
+    elseif α1 == 2 && α1 == 1
+        Σ_sum += conj(para.Δ)
+    end
+    # this choice of k_1 meshes may cause some problems
+    @inbounds for K in k_m, Θ in θ_m, Φ in ϕ_m
+        ksqG = K^2
+        K_vec = [K * sin(Θ) * cos(Φ), K * sin(Θ) * sin(Φ), K * cos(Θ)]
+        k_vec = [k * sin(θ) * cos(ϕ), k * sin(θ) * sin(ϕ), k * cos(θ)]
+        diff = K_vec - k_vec
+        ω_sum = zero(Complex64)
+        @inbounds for ω_n in ω_m
+            G = zero(Complex64)
+            if α2 == 1 && α1 == 1
+                G = G_mean(ω = ω_n, ϵ = ksqG, para = para)
+            elseif α2 == 1 && α1 == 2
+                G = F_mean(ω = ω_n, ϵ = ksqG, para = para)
+            elseif α2 == 2 && α1 == 1
+                G = -conj(F_mean(ω = -ω_n, ϵ = ksqG, para = para))
+            elseif α2 == 2 && α1 == 2
+                G = -G_mean(ω = -ω_n, ϵ = ksqG, para = para)
+            end
+            diff_module = norm(diff)
+            diff_θ = acos(diff[3] / diff_module)
+            diff_ϕ = mod2pi(atan(diff[2], diff[1]))
+            m = M_n_atomic(
+                para = para,
+                meshes = meshes,
+                ΔV = ΔV,
+                K = diff_module,
+                Θ = diff_θ,
+                Φ = diff_ϕ,
+                Ω_n = ω - ω_n,
+                α1 = α1,
+                α2 = α2,
+            )
+            Γ = Γ_n_atomic(T = para.v / (8π), m_n = m, α1 = α1, α2 = α2)
+            ω_sum += G * Γ
+        end
+        Σ_sum += ω_sum / DEFAULT_β * ΔV / (2π)^3 * K^2 * sin(Θ)
+    end
+    return Σ_sum
+end
+
+
+function Self_energy(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
+    ω_m, Ω_m, k_m, θ_m, ϕ_m = meshes
+    self_energy = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, ω_m; dtype = ComplexF64)
+
 end
 
 function SCF()
     # start from phase space component of G and F
     # the green function has no spin index, but Nambu indices
 end
-
-end # module
+end
