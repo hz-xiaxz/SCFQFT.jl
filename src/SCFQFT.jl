@@ -183,7 +183,7 @@ function M_n(;
     Δϕ = ϕ_m[2] - ϕ_m[1]
     ΔV = Δk * Δθ * Δϕ
 
-    for K_idx in eachindex(k_m),
+    @inbounds for K_idx in eachindex(k_m),
         Θ_idx in eachindex(θ_m),
         Φ_idx in eachindex(ϕ_m),
         Ω_idx in eachindex(Ω_m)
@@ -193,9 +193,11 @@ function M_n(;
         Φ = ϕ_m[Φ_idx]
         Ω_n = Ω_m[Ω_idx]
 
-        for α1 = 1:2, α2 = 1:2
+        @inbounds for α1 = 1:2, α2 = 1:2
             k_sum = 0.0im
-            for k_idx in eachindex(k_m), θ_idx in eachindex(θ_m), ϕ_idx in eachindex(ϕ_m)
+            @inbounds for k_idx in eachindex(k_m),
+                θ_idx in eachindex(θ_m),
+                ϕ_idx in eachindex(ϕ_m)
 
                 k = k_m[k_idx]
                 θ = θ_m[θ_idx]
