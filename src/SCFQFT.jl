@@ -315,10 +315,22 @@ function Self_energy_atomic(;
 end
 
 
-function Self_energy(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
+function Σ_n(; para::Parameters, meshes = (ω_mesh, Ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
     ω_m, Ω_m, k_m, θ_m, ϕ_m = meshes
-    self_energy = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, ω_m; dtype = ComplexF64)
-
+    Σ_n = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, ω_m; dtype = ComplexF64)
+    @inbounds for ind in eachindex(Σ_n)
+        Σ_n[ind] = Self_energy_atomic(
+            para = para,
+            meshes = meshes,
+            α1 = ind[1],
+            α2 = ind[2],
+            k = k_m[ind[3]],
+            θ = θ_m[ind[4]],
+            ϕ = ϕ_m[ind[5]],
+            ω = ω_m[ind[6]],
+        )
+    end
+    return Σ_n
 end
 
 function SCF()
