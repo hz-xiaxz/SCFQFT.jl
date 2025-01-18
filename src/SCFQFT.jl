@@ -280,7 +280,7 @@ function Self_energy_atomic(;
         K_vec = [K * sin(Θ) * cos(Φ), K * sin(Θ) * sin(Φ), K * cos(Θ)]
         k_vec = [k * sin(θ) * cos(ϕ), k * sin(θ) * sin(ϕ), k * cos(θ)]
         diff = K_vec - k_vec
-        ω_sum = zero(Complex64)
+        ω_sum = zero(ComplexF64)
         @inbounds for ω_n in ω_m
             G = zero(Complex64)
             if α2 == 1 && α1 == 1

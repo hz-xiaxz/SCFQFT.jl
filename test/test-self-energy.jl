@@ -1,5 +1,6 @@
 using Test
-using SCFQFT
+using SCFQFT: DEFAULT_β, DEFAULT_Λ
+using SCFQFT: Parameters, create_meshes, Self_energy_atomic, Σ_n
 using LinearAlgebra
 using GreenFunc
 using CompositeGrids
@@ -59,7 +60,7 @@ using CompositeGrids
     end
 
     @testset "Full Self_energy" begin
-        Σ = Self_energy(para = para, meshes = meshes)
+        Σ = Σ_n(para = para, meshes = meshes)
 
         # Test dimensions
         expected_size = (2, 2, length(k_m), length(θ_m), length(ϕ_m), length(ω_m))
