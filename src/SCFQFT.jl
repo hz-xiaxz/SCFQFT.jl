@@ -271,7 +271,7 @@ function Self_energy_atomic(;
     Σ_sum = 0.0im
     if α1 == 1 && α2 == 2
         Σ_sum += para.Δ
-    elseif α1 == 2 && α1 == 1
+    elseif α1 == 2 && α2 == 1
         Σ_sum += conj(para.Δ)
     end
     # this choice of k_1 meshes may cause some problems
@@ -282,7 +282,7 @@ function Self_energy_atomic(;
         diff = K_vec - k_vec
         ω_sum = zero(ComplexF64)
         @inbounds for ω_n in ω_m
-            G = zero(Complex64)
+            G = zero(ComplexF64)
             if α2 == 1 && α1 == 1
                 G = G_mean(ω = ω_n, ϵ = ksqG, para = para)
             elseif α2 == 1 && α1 == 2
@@ -295,6 +295,11 @@ function Self_energy_atomic(;
             diff_module = norm(diff)
             diff_θ = acos(diff[3] / diff_module)
             diff_ϕ = mod2pi(atan(diff[2], diff[1]))
+            # Choice of diff_\theta and diff_\phi is arbitrary
+            if diff_module == 0
+                diff_θ = 0.0
+                diff_ϕ = 0.0
+            end
             m = M_n_atomic(
                 para = para,
                 meshes = meshes,
