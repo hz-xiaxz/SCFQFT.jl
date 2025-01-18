@@ -97,16 +97,16 @@ end
 function G_n(; para::Parameters, meshes = (ω_mesh, k_mesh, θ_mesh, ϕ_mesh))
     ω_m, k_m, θ_m, ϕ_m = meshes
     G_n = MeshArray(1:2, 1:2, k_m, θ_m, ϕ_m, ω_m; dtype = ComplexF64)
-    for ind in eachindex(G_n)
-        k = G_n.mesh[3][ind[3]]
-        ω_n = G_n.mesh[6][ind[6]]
+    @inbounds for ind in eachindex(G_n)
+        k = k_m[ind[3]]
+        ω_n = ω_m[ind[6]]
         ksq = k^2
         if ind[1] == 1 && ind[2] == 1
             G_n[ind] = G_mean(ω = ω_n, ϵ = ksq, para = para)
         elseif ind[1] == 1 && ind[2] == 2
             G_n[ind] = F_mean(ω = ω_n, ϵ = ksq, para = para)
         elseif ind[1] == 2 && ind[2] == 1
-            G_n[ind] = -conj(F_mean(ω = -ω_n, ϵ = ksq, para = para))
+            G_n[ind] = conj(F_mean(ω = -ω_n, ϵ = ksq, para = para))
         elseif ind[1] == 2 && ind[2] == 2
             G_n[ind] = -G_mean(ω = -ω_n, ϵ = ksq, para = para)
         end
@@ -288,7 +288,7 @@ function Self_energy_atomic(;
             elseif α2 == 1 && α1 == 2
                 G = F_mean(ω = ω_n, ϵ = ksqG, para = para)
             elseif α2 == 2 && α1 == 1
-                G = -conj(F_mean(ω = -ω_n, ϵ = ksqG, para = para))
+                G = conj(F_mean(ω = -ω_n, ϵ = ksqG, para = para))
             elseif α2 == 2 && α1 == 2
                 G = -G_mean(ω = -ω_n, ϵ = ksqG, para = para)
             end
